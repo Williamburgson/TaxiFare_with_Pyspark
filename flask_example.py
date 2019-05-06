@@ -17,21 +17,22 @@ from flask import (
 )
 sys.path.append('./python')
 app = Flask(__name__)
-spark = SparkSession\
-    .builder\
-    .appName("AppName")\
-    .config("spark.driver.allowMultipleContexts", "true")\
-    .getOrCreate()
-spark.conf.set("spark.sql.shuffle.partitions", 6)
-spark.conf.set("spark.executor.memory", "2g")
+# spark = SparkSession\
+#     .builder\
+#     .appName("AppName")\
+#     .config("spark.driver.allowMultipleContexts", "true")\
+#     .getOrCreate()
+# spark.conf.set("spark.sql.shuffle.partitions", 6)
+# spark.conf.set("spark.executor.memory", "2g")
 # spark.conf.set("spark.driver.allowMultipleContexts", "true")
-# conf = SparkConf().setAppName('Flask on Spark')\
-#     .set("spark.driver.allowMultipleContexts", "true")\
-#     .set("spark.shuffle.service.enabled", "false")\
-#     .set("spark.dynamicAllocation.enabled", "false")
-# sc = SparkContext(conf=conf)
-# sqlContext = SQLContext(sc)
-file_path = "raw_merged.csv"
+conf = SparkConf().setAppName('Flask on Spark')\
+    .set("spark.driver.allowMultipleContexts", "true")\
+    .set("spark.shuffle.service.enabled", "false")\
+    .set("spark.dynamicAllocation.enabled", "false")
+sc = SparkContext(conf=conf)
+sqlContext = SQLContext(sc)
+# file_path = "raw_merged.csv"
+file_path = "new_input.csv"
 
 '''
 Create linear regression model for prediction
@@ -71,39 +72,47 @@ def my_form_post():
     # create new df of input data
     def to_row(d):
         return Row(**OrderedDict(sorted(d.items())))
-    df = spark.sparkContext.parallelize([{'PRCP': prcp, 'SNOW': snow, 'TAVG': tavg,\
+    # df = spark.sparkContext.parallelize([{'PRCP': prcp, 'SNOW': snow, 'TAVG': tavg,\
+    #                  'TMAX': tmax, 'TMIN': tmin, 'passenger_count': float(passenger),\
+    #                  'trip_distance': float(distance)}]).map(to_row).toDF()
+    df = sc.parallelize([{'PRCP': prcp, 'SNOW': snow, 'TAVG': tavg,\
                      'TMAX': tmax, 'TMIN': tmin, 'passenger_count': float(passenger),\
                      'trip_distance': float(distance)}]).map(to_row).toDF()
 
     #assemble to vector
-    flist = ['SNOW', 'TAVG', 'TMAX', 'TMIN', 'passenger_count', 'trip_distance']
-    data2 = df.select(df.SNOW, df.TAVG, df.TMAX, df.TMIN, df.passenger_count,
+    flist = ['PRCP', 'SNOW', 'TAVG', 'TMAX', 'TMIN', 'passenger_count', 'trip_distance']
+    data2 = df.select(df.PRCP, df.SNOW, df.TAVG, df.TMAX, df.TMIN, df.passenger_count,
                      df.trip_distance)
     assembler = VectorAssembler(inputCols=flist, outputCol='features')
     temp = assembler.transform(data2)
     data = temp.select("features")
 
     # new model instance
-    train = spark.read.csv(file_path, header=True, inferSchema=True)
+    #train = spark.read.csv(file_path, header=True, inferSchema=True)
+    train = sqlContext.read.format('csv').options(header='true', inferSchema='true').\
+        load("new_input.csv")
     print(train.printSchema())
     print(str(train.count()))
+    train.show(n=5)
 
-    train_data = train.select(train.SNOW, train.TAVG, train.TMAX, train.TMIN, train.passenger_count,
+
+    train_data = train.select(train.PRCP, train.SNOW, train.TAVG, train.TMAX, train.TMIN, train.passenger_count,
                            train.trip_distance, train.total_amount.alias('label'))
+    train_data = train_data.dropna()
     assembler = VectorAssembler(inputCols=flist, outputCol='features')
     temp = assembler.transform(train_data)
     train_vector = temp.select("features", "label")
     print(train_vector.printSchema())
-    print(str(train_vector.count()))
-    return (train_vector.foreach(lambda x: str(x)))
+    train_vector.show(n=10, truncate=False)
+
+
 
     lr = LinearRegression(featuresCol='features', labelCol='label',
                           maxIter=10, regParam=0.3, elasticNetParam=0.8)
     lr_model = lr.fit(train_vector)
-
-    # model = spark_model(train_vector)
-    # lr = model.get()
-    #y_pred = lr.transform(data)
+    y_pred = ""#lr_model.transform(data)
+    print("=====================\n",lr_model,"\n======================\n",
+                        y_pred,"=====================\n\n\n\n\n")
 
     return str(lr_model.coefficients)
 
@@ -112,8 +121,8 @@ def my_form_post():
 if __name__ == "__main__":
     try:
         app.run(debug=True)
-        app.run(threaded=True)
-        app.run(port=os.environ.get('FLASK_PORT', 8080), host='0.0.0.0')
+        #app.run(threaded=True)
+        #app.run(port=os.environ.get('FLASK_PORT', 8080), host='0.0.0.0')
     finally:
-        # sc.stop()
-        spark.stop()
+        sc.stop()
+        # spark.stop()
