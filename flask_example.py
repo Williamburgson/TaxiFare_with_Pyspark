@@ -73,9 +73,7 @@ def my_form_post():
         return Row(**OrderedDict(sorted(d.items())))
     df = spark.sparkContext.parallelize([{'PRCP': prcp, 'SNOW': snow, 'TAVG': tavg,\
                      'TMAX': tmax, 'TMIN': tmin, 'passenger_count': float(passenger),\
-                     'trip_distance': float(distance)}]) \
-        .map(to_row) \
-        .toDF()
+                     'trip_distance': float(distance)}]).map(to_row).toDF()
 
     #assemble to vector
     flist = ['SNOW', 'TAVG', 'TMAX', 'TMIN', 'passenger_count', 'trip_distance']
@@ -88,22 +86,26 @@ def my_form_post():
     # new model instance
     train = spark.read.csv(file_path, header=True, inferSchema=True)
     print(train.printSchema())
-    print(train.count())
-    print(train.take(5))
+    print(str(train.count()))
 
-    train_data = df.select(df.SNOW, df.TAVG, df.TMAX, df.TMIN, df.passenger_count,
-                           df.trip_distance, df.total_amount.alias('label'))
+    train_data = train.select(train.SNOW, train.TAVG, train.TMAX, train.TMIN, train.passenger_count,
+                           train.trip_distance, train.total_amount.alias('label'))
     assembler = VectorAssembler(inputCols=flist, outputCol='features')
     temp = assembler.transform(train_data)
     train_vector = temp.select("features", "label")
     print(train_vector.printSchema())
+    print(str(train_vector.count()))
+    return (train_vector.foreach(lambda x: str(x)))
 
-    return(train_vector.count())
-    # model = spark_model(train)
+    lr = LinearRegression(featuresCol='features', labelCol='label',
+                          maxIter=10, regParam=0.3, elasticNetParam=0.8)
+    lr_model = lr.fit(train_vector)
+
+    # model = spark_model(train_vector)
     # lr = model.get()
     #y_pred = lr.transform(data)
 
-    # return str(lr.coefficients)
+    return str(lr_model.coefficients)
 
 
 
