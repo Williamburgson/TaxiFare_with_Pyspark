@@ -7,16 +7,22 @@ from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.sql import SQLContext, SparkSession
 from pyspark.sql import Row
 from collections import OrderedDict
-
+from geopy.geocoders import Nominatim
+from geopy.distance import geodesic
 
 File = 'data/reduce_input.csv'
 
+def calc_dis(drop, pick):
+    geolocator = Nominatim(user_agent="taxi")
+    drop_loc, pick_loc = geolocator.geocode(drop), geolocator.geocode(pick)
+    dl, pl = (drop_loc.latitude, drop_loc.longitude), (pick_loc.latitude, pick_loc.longitude)
+    return geodesic(dl, pl).miles
 
-def parse(num, distance, file=File):
+def parse(num, drop, pick, file=File):
 
     sc = SparkContext.getOrCreate()
     sqlContext = SQLContext(sc)
-
+    distance = calc_dis(drop, pick)
     # initailize params
     prcp = 0.0413
     snow = 0.0603
@@ -57,4 +63,3 @@ def parse(num, distance, file=File):
     y_pred = round(lr_model.transform(data).select("prediction").take(1)[0]['prediction'], 2)
 
     return y_pred
-

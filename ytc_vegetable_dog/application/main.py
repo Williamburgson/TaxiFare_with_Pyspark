@@ -10,8 +10,8 @@ def home():
 @app.route("/result", methods=['GET', 'POST'])
 def main():
     req = request.form
-    num_passenger, distance = req.get("num_passenger"), req.get("distance")
-    req = {"fare": parse(num_passenger, distance)}
+    num_passenger, drop, pick = req.get("num_passengers"), req.get("dropoff"), req.get("pickup")
+    req = {"fare": parse(num_passenger, drop, pick)}
     return render_template("result.html", result=req)
 
 
