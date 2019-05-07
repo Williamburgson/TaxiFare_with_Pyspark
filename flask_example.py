@@ -8,7 +8,7 @@ from pyspark.ml.regression import LinearRegression, DecisionTreeRegressor
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark import SparkContext, SparkConf
-from pyspark.sql import SQLContext, SparkSession
+from pyspark.sql import SQLContext#, SparkSession
 from pyspark.sql import Row
 from collections import OrderedDict
 # import spark_model as sm
@@ -85,15 +85,35 @@ def my_form_post():
                      df.trip_distance)
     assembler = VectorAssembler(inputCols=flist, outputCol='features')
     temp = assembler.transform(data2)
-    data = temp.select("features")
+    input_data = temp.select("features")
 
     # new model instance
     #train = spark.read.csv(file_path, header=True, inferSchema=True)
-    train = sqlContext.read.format('csv').options(header='true', inferSchema='true').\
+    train = sqlContext.read.format('com.databricks.spark.csv').options(header='true', inferSchema='true').\
         load("new_input.csv")
     print(train.printSchema())
-    print(str(train.count()))
     train.show(n=5)
+
+
+    # from pyspark.sql.types import StructType
+    # from pyspark.sql.types import StructField
+    # from pyspark.sql.types import FloatType, IntegerType, StringType
+    #
+    # rdd = sc.textFile("new_input.csv")
+    # schema = StructType([
+    #     StructField("index", StringType(), True),
+    #     StructField("PRCP", FloatType(), True),
+    #     StructField("SNOW", FloatType(), True),
+    #     StructField("TAVG", FloatType(), True),
+    #     StructField("TMAX", FloatType(), True),
+    #     StructField("TMIN", FloatType(), True),
+    #     StructField("passenger_count", FloatType(), True),
+    #     StructField("trip_distance", FloatType(), True),
+    #     StructField("total_amount", FloatType(), True)
+    # ])
+    # new_rdd = rdd.map(lambda x: float(x)).map(lambda x: x.split(','))
+    # temp = sqlContext.createDataFrame(new_rdd, schema)
+
 
 
     train_data = train.select(train.PRCP, train.SNOW, train.TAVG, train.TMAX, train.TMIN, train.passenger_count,
@@ -102,15 +122,20 @@ def my_form_post():
     assembler = VectorAssembler(inputCols=flist, outputCol='features')
     temp = assembler.transform(train_data)
     train_vector = temp.select("features", "label")
+    # train_vector = train_vector.cache()
     print(train_vector.printSchema())
     train_vector.show(n=10, truncate=False)
-
+    train_vector.describe().show()
 
 
     lr = LinearRegression(featuresCol='features', labelCol='label',
                           maxIter=10, regParam=0.3, elasticNetParam=0.8)
     lr_model = lr.fit(train_vector)
     y_pred = ""#lr_model.transform(data)
+
+
+
+
     print("=====================\n",lr_model,"\n======================\n",
                         y_pred,"=====================\n\n\n\n\n")
 
