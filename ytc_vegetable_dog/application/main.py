@@ -12,7 +12,7 @@ def main():
     req = request.form
     num_passenger, drop, pick = req.get("num_passengers"), req.get("dropoff"), req.get("pickup")
     req = {"fare": parse(num_passenger, drop, pick)}
-    return render_template("result.html", result=req)
+    return render_template("main.html", result=req)
 
 
 if __name__ == "__main__":
