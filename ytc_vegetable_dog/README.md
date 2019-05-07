@@ -1,4 +1,4 @@
-# Template Website Built For CUSP Capstone Project
+# Template Website Built For Big Data Course Project
 
 ## Usage: 
 - start backend: python wsgi.py 
