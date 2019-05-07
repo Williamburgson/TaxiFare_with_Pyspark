@@ -1,3 +1,6 @@
-# TaxiFare_with_Pyspark
+# Template Website Built For CUSP Capstone Project
 
-spark-submit --packages com.databricks:spark-csv_2.10:1.2.0 flask_example.py
+## Usage: 
+- start backend: python wsgi.py 
+- website access: http://127.0.0.1:5400/home (get)
+
