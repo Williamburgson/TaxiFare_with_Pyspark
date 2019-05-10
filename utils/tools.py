@@ -59,6 +59,23 @@ def parse(num, drop, pick, file=File):
 
     lr = LinearRegression(featuresCol='features', labelCol='label',
                           maxIter=10, regParam=0.3, elasticNetParam=0.8)
+
+
+    # model evaluation
+    splits = train_vector.randomSplit([0.7, 0.3])
+    train = splits[0]
+    test = splits[1]
+    lr_model = lr.fit(train)
+    print("Coefficients: " + str(lr_model.coefficients))
+    print("Intercept: " + str(lr_model.intercept))
+    trainingSummary = lr_model.summary
+    print("RMSE: %f" % trainingSummary.rootMeanSquaredError)
+    print("r2: %f" % trainingSummary.r2)
+    test_result = lr_model.evaluate(test)
+    print("Root Mean Squared Error (RMSE) on test data = %g" % test_result.rootMeanSquaredError)
+    trainingSummary.residuals.show(truncate=False)
+
+    # return result
     lr_model = lr.fit(train_vector)
     y_pred = round(lr_model.transform(data).select("prediction").take(1)[0]['prediction'], 2)
 
